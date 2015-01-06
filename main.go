@@ -9,10 +9,7 @@
 package main
 
 import (
-	"crypto/sha1"
-	"encoding/base64"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,6 +25,8 @@ const allowOrigin = "http://gopherjs.org"
 const userAgent = "gopherjs.org/play/ playground snippet fetcher"
 
 func pHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+
 	if req.Method != "GET" {
 		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
 		return
@@ -40,65 +39,36 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-
-	// Check if we have the snippet locally first.
-	file, err := os.Open(filepath.Join(*storageDirFlag, id))
-	if err == nil {
-		defer file.Close()
-
-		_, err = io.Copy(w, file)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-		}
-		return
+	var snippetSource io.ReadCloser
+	if rc, err := getSnippetFromLocalStore(id); err == nil { // Check if we have the snippet locally first.
+		defer rc.Close()
+		snippetSource = rc
+	} else if rc, err = getSnippetFromGoPlayground(id); err == nil { // If not found locally, try the Go Playground.
+		defer rc.Close()
+		snippetSource = rc
 	}
 
-	// If not found locally, try the Go Playground.
-	req2, err := http.NewRequest("GET", "http://play.golang.org/p/"+id+".go", nil)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Server error.", http.StatusInternalServerError)
-		return
-	}
-	req2.Header.Set("User-Agent", userAgent)
-
-	resp, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Server error.", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	default:
-		log.Println("Unexpected StatusCode from Go Playground:", resp.StatusCode)
-		http.Error(w, "Server error.", http.StatusInternalServerError)
-		return
-	case http.StatusOK:
-		// Snippet found on Go Playground.
-		_, err = io.Copy(w, resp.Body)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-	case http.StatusNotFound:
-		// Snippet not found on Go Playground.
+	if snippetSource == nil {
+		// Snippet not found.
 		http.Error(w, "Snippet not found.", http.StatusNotFound)
+		return
+	}
+
+	_, err = io.Copy(w, snippetSource)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
 		return
 	}
 }
 
 func shareHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+
 	if req.Method != "POST" {
 		http.Error(w, "Forbidden.", http.StatusForbidden)
 		return
 	}
-
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -107,9 +77,7 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id := snippetBodyToId(body)
-
-	err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
+	id, err := storeSnippet(body)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)
@@ -139,34 +107,4 @@ func main() {
 	if err != nil {
 		log.Println("ListenAndServe:", err)
 	}
-}
-
-// snippetBodyToId mimics the mapping scheme used by the Go Playground.
-func snippetBodyToId(body []byte) string {
-	// This is the actual salt value used by Go Playground, it comes from
-	// https://code.google.com/p/go-playground/source/browse/goplay/share.go#18.
-	// See https://github.com/gopherjs/snippet-store/pull/1#discussion_r22512198 for more details.
-	const salt = "[replace this with something unique]"
-
-	h := sha1.New()
-	io.WriteString(h, salt)
-	h.Write(body)
-	sum := h.Sum(nil)
-	return base64.URLEncoding.EncodeToString(sum)[:10]
-}
-
-// validateId returns an error if id is of unexpected format.
-func validateId(id string) error {
-	if len(id) != 10 {
-		return fmt.Errorf("id length is %v instead of 10", len(id))
-	}
-
-	for _, b := range []byte(id) {
-		ok := ('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z') || ('0' <= b && b <= '9') || b == '-' || b == '_'
-		if !ok {
-			return fmt.Errorf("id contains unexpected character %+q", b)
-		}
-	}
-
-	return nil
 }
