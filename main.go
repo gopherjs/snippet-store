@@ -24,6 +24,7 @@ var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gop
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
 
 const allowOrigin = "http://gopherjs.org"
+const userAgent = "gopherjs.org/play/ playground snippet fetcher"
 
 func pHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "GET" {
@@ -55,7 +56,7 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Server error.", http.StatusInternalServerError)
 		return
 	}
-	req2.Header.Set("User-Agent", "gopherjs.org/play/ playground snippet fetcher")
+	req2.Header.Set("User-Agent", userAgent)
 
 	resp, err := http.DefaultClient.Do(req2)
 	if err != nil {
@@ -128,11 +129,17 @@ func main() {
 	http.HandleFunc("/p/", pHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
 	http.HandleFunc("/share", shareHandler) // "/share", save snippet and return its id.
 
-	panic(http.ListenAndServe(*httpFlag, nil))
+	err = http.ListenAndServe(*httpFlag, nil)
+	if err != nil {
+		log.Println("ListenAndServe:", err)
+	}
 }
 
 // snippetBodyToId mimics the mapping scheme used by the Go Playground.
 func snippetBodyToId(body []byte) string {
+	// This is the actual salt value used by Go Playground, it comes from
+	// https://code.google.com/p/go-playground/source/browse/goplay/share.go#18.
+	// See https://github.com/gopherjs/snippet-store/pull/1#discussion_r22512198 for more details.
 	const salt = "[replace this with something unique]"
 
 	h := sha1.New()
