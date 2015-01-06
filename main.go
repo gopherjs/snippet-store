@@ -35,8 +35,20 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 
 	id := req.URL.Path[len("/p/"):]
 
-	// TODO: Newly shared snippets are stored locally in the specified folder and take precedence.
+	// Check if we have the snippet locally first.
+	file, err := os.Open(filepath.Join(*storageDirFlag, id))
+	if err == nil {
+		defer file.Close()
 
+		_, err = io.Copy(w, file)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Server error.", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// If not found locally, try the Go Playground.
 	req2, err := http.NewRequest("GET", "http://play.golang.org/p/"+id+".go", nil)
 	if err != nil {
 		log.Println(err)
@@ -68,19 +80,8 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	case http.StatusNotFound:
 		// Snippet not found on Go Playground.
-		file, err := os.Open(filepath.Join(*storageDirFlag, id))
-		if err != nil {
-			http.Error(w, "Snippet not found.", http.StatusNotFound)
-			return
-		}
-		defer file.Close()
-
-		_, err = io.Copy(w, file)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
+		http.Error(w, "Snippet not found.", http.StatusNotFound)
+		return
 	}
 }
 
