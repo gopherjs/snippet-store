@@ -22,7 +22,6 @@ var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gop
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
 
 const allowOrigin = "http://gopherjs.org"
-const userAgent = "gopherjs.org/play/ playground snippet fetcher"
 
 func pHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
