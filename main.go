@@ -39,22 +39,22 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var snippetSource io.ReadCloser
+	var snippet io.Reader
 	if rc, err := getSnippetFromLocalStore(id); err == nil { // Check if we have the snippet locally first.
 		defer rc.Close()
-		snippetSource = rc
+		snippet = rc
 	} else if rc, err = getSnippetFromGoPlayground(id); err == nil { // If not found locally, try the Go Playground.
 		defer rc.Close()
-		snippetSource = rc
+		snippet = rc
 	}
 
-	if snippetSource == nil {
+	if snippet == nil {
 		// Snippet not found.
 		http.Error(w, "Snippet not found.", http.StatusNotFound)
 		return
 	}
 
-	_, err = io.Copy(w, snippetSource)
+	_, err = io.Copy(w, snippet)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)
