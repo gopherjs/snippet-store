@@ -23,6 +23,8 @@ import (
 var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gopherjs_snippets"), "Storage dir for snippets.")
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
 
+const allowOrigin = "http://gopherjs.org"
+
 func main() {
 	flag.Parse()
 
@@ -38,7 +40,7 @@ func main() {
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "http://gopherjs.org")
+		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 
 		id := req.URL.Path[len("/p/"):]
 
@@ -94,7 +96,7 @@ func main() {
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "http://gopherjs.org")
+		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
