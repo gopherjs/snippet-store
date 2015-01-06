@@ -25,6 +25,97 @@ var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this
 
 const allowOrigin = "http://gopherjs.org"
 
+func pHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+
+	id := req.URL.Path[len("/p/"):]
+
+	// TODO: Newly shared snippets are stored locally in the specified folder and take precedence.
+
+	req2, err := http.NewRequest("GET", "http://play.golang.org/p/"+id+".go", nil)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+	req2.Header.Set("User-Agent", "gopherjs.org/play/ playground snippet fetcher")
+
+	resp, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	default:
+		log.Println("Unexpected StatusCode from Go Playground:", resp.StatusCode)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	case http.StatusOK:
+		// Snippet found on Go Playground.
+		_, err = io.Copy(w, resp.Body)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Server error.", http.StatusInternalServerError)
+			return
+		}
+	case http.StatusNotFound:
+		// Snippet not found on Go Playground.
+		file, err := os.Open(filepath.Join(*storageDirFlag, id))
+		if err != nil {
+			http.Error(w, "Snippet not found.", http.StatusNotFound)
+			return
+		}
+		defer file.Close()
+
+		_, err = io.Copy(w, file)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Server error.", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func shareHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "Forbidden.", http.StatusForbidden)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+
+	id := snippetBodyToId(body)
+
+	err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = io.WriteString(w, id)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -33,94 +124,8 @@ func main() {
 		log.Fatalf("Error creating directory %q: %v.\n", *storageDirFlag, err)
 	}
 
-	// "/p/{{.SnippetId}}", serve snippet by id.
-	http.HandleFunc("/p/", func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != "GET" {
-			http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
-			return
-		}
-
-		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-
-		id := req.URL.Path[len("/p/"):]
-
-		req2, err := http.NewRequest("GET", "http://play.golang.org/p/"+id+".go", nil)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-		req2.Header.Set("User-Agent", "gopherjs.org/play/ playground snippet fetcher")
-
-		resp, err := http.DefaultClient.Do(req2)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-
-		switch resp.StatusCode {
-		default:
-			log.Println("Unexpected StatusCode from Go Playground:", resp.StatusCode)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		case http.StatusOK:
-			// Snippet found on
-			_, err = io.Copy(w, resp.Body)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, "Server error.", http.StatusInternalServerError)
-				return
-			}
-		case http.StatusNotFound:
-			file, err := os.Open(filepath.Join(*storageDirFlag, id))
-			if err != nil {
-				http.Error(w, "Snippet not found.", http.StatusNotFound)
-				return
-			}
-			defer file.Close()
-
-			_, err = io.Copy(w, file)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, "Server error.", http.StatusInternalServerError)
-				return
-			}
-		}
-	})
-	// "/share", save snippet and return its id.
-	http.HandleFunc("/share", func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != "POST" {
-			http.Error(w, "Forbidden.", http.StatusForbidden)
-			return
-		}
-
-		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-
-		body, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-
-		id := snippetBodyToId(body)
-
-		err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-
-		_, err = io.WriteString(w, id)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Server error.", http.StatusInternalServerError)
-			return
-		}
-	})
+	http.HandleFunc("/p/", pHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
+	http.HandleFunc("/share", shareHandler) // "/share", save snippet and return its id.
 
 	panic(http.ListenAndServe(*httpFlag, nil))
 }
