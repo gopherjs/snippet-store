@@ -12,6 +12,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,9 +33,14 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-
 	id := req.URL.Path[len("/p/"):]
+	err := validateId(id)
+	if err != nil {
+		http.Error(w, "Unexpected id format.", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 
 	// Check if we have the snippet locally first.
 	file, err := os.Open(filepath.Join(*storageDirFlag, id))
@@ -147,4 +153,20 @@ func snippetBodyToId(body []byte) string {
 	h.Write(body)
 	sum := h.Sum(nil)
 	return base64.URLEncoding.EncodeToString(sum)[:10]
+}
+
+// validateId returns an error if id is of unexpected format.
+func validateId(id string) error {
+	if len(id) != 10 {
+		return fmt.Errorf("id length is %v instead of 10", len(id))
+	}
+
+	for _, b := range []byte(id) {
+		ok := ('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z') || ('0' <= b && b <= '9') || b == '-' || b == '_'
+		if !ok {
+			return fmt.Errorf("id contains unexpected character %+q", b)
+		}
+	}
+
+	return nil
 }
