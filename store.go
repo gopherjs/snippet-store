@@ -12,12 +12,7 @@ import (
 // getSnippetFromLocalStore tries to get the snippet with given id from local store.
 // If it returns nil error, the ReadCloser must be closed by caller.
 func getSnippetFromLocalStore(id string) (io.ReadCloser, error) {
-	file, err := os.Open(filepath.Join(*storageDirFlag, id))
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
+	return os.Open(filepath.Join(*storageDirFlag, id))
 }
 
 const userAgent = "gopherjs.org/play/ playground snippet fetcher"
@@ -25,7 +20,7 @@ const userAgent = "gopherjs.org/play/ playground snippet fetcher"
 // getSnippetFromGoPlayground tries to get the snippet with given id from the Go Playground.
 // If it returns nil error, the ReadCloser must be closed by caller.
 func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", "http://play.golang.org/p/"+id+".go", nil)
+	req, err := http.NewRequest("GET", "https://play.golang.org/p/"+id+".go", nil)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gop
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
 
 const allowOrigin = "http://gopherjs.org"
+const maxSnippetSizeBytes = 1024 * 1024
 
 func pHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
@@ -69,7 +70,7 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(http.MaxBytesReader(w, req.Body, maxSnippetSizeBytes))
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)
