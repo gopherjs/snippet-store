@@ -105,6 +105,6 @@ func main() {
 
 	err = http.ListenAndServe(*httpFlag, nil)
 	if err != nil {
-		log.Println("ListenAndServe:", err)
+		log.Fatalln("ListenAndServe:", err)
 	}
 }

@@ -32,13 +32,15 @@ func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		return nil, fmt.Errorf("Go Playground returned unexpected status code %v", resp.StatusCode)
 	}
 
 	return resp.Body, nil
 }
 
-// Store snippet in local storage.
+// storeSnippet stores snippet in local storage.
+// It returns the id assigned to the snippet.
 func storeSnippet(body []byte) (id string, err error) {
 	id = snippetBodyToId(body)
 	err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
