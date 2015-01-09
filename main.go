@@ -64,6 +64,7 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 
 func shareHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Needed for Safari.
 
 	if req.Method != "POST" {
 		http.Error(w, "Forbidden.", http.StatusForbidden)
