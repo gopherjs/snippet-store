@@ -20,12 +20,12 @@ import (
 
 var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gopherjs_snippets"), "Storage dir for snippets.")
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
+var allowOriginFlag = flag.String("allow-origin", "http://www.gopherjs.org", "Access-Control-Allow-Origin header value.")
 
-const allowOrigin = "http://gopherjs.org"
 const maxSnippetSizeBytes = 1024 * 1024
 
 func pHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
 
 	if req.Method != "GET" {
 		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
@@ -63,7 +63,7 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func shareHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Needed for Safari.
 
 	if req.Method != "POST" {
