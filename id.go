@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-// snippetBodyToId mimics the mapping scheme used by the Go Playground.
-func snippetBodyToId(body []byte) string {
+// snippetBodyToID mimics the mapping scheme used by the Go Playground.
+func snippetBodyToID(body []byte) string {
 	// This is the actual salt value used by Go Playground, it comes from
 	// https://code.google.com/p/go-playground/source/browse/goplay/share.go#18.
 	// See https://github.com/gopherjs/snippet-store/pull/1#discussion_r22512198 for more details.
@@ -21,8 +21,8 @@ func snippetBodyToId(body []byte) string {
 	return base64.URLEncoding.EncodeToString(sum)[:10]
 }
 
-// validateId returns an error if id is of unexpected format.
-func validateId(id string) error {
+// validateID returns an error if id is of unexpected format.
+func validateID(id string) error {
 	if len(id) != 10 {
 		return fmt.Errorf("id length is %v instead of 10", len(id))
 	}

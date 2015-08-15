@@ -42,7 +42,7 @@ func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
 // storeSnippet stores snippet in local storage.
 // It returns the id assigned to the snippet.
 func storeSnippet(body []byte) (id string, err error) {
-	id = snippetBodyToId(body)
+	id = snippetBodyToID(body)
 	err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
 	return id, err
 }

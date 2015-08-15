@@ -34,7 +34,7 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	id := req.URL.Path[len("/p/"):]
-	err := validateId(id)
+	err := validateID(id)
 	if err != nil {
 		http.Error(w, "Unexpected id format.", http.StatusBadRequest)
 		return
