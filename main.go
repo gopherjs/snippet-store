@@ -2,7 +2,7 @@
 //
 // It uses the same mapping scheme as the Go Playground, and when a snippet isn't found locally,
 // it defers to fetching it from the Go Playground. This effectively augments our world of available
-// snippets with that the Go Playground.
+// snippets with that of the Go Playground.
 //
 // Newly shared snippets are stored locally in the specified folder and take precedence.
 package main
