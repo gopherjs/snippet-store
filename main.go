@@ -28,6 +28,7 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
 
 	if req.Method != "GET" {
+		w.Header().Set("Allow", "GET")
 		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
 		return
 	}
@@ -67,7 +68,8 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Needed for Safari.
 
 	if req.Method != "POST" {
-		http.Error(w, "Forbidden.", http.StatusForbidden)
+		w.Header().Set("Allow", "POST")
+		http.Error(w, "Method should be POST.", http.StatusMethodNotAllowed)
 		return
 	}
 
