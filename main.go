@@ -14,10 +14,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+
+	"golang.org/x/net/webdav"
 )
 
-var storageDirFlag = flag.String("storage-dir", filepath.Join(os.TempDir(), "gopherjs_snippets"), "Storage dir for snippets.")
+var storageDirFlag = flag.String("storage-dir", "", "Storage dir for snippets; if empty, a volatile in-memory store is used.")
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
 var allowOriginFlag = flag.String("allow-origin", "http://www.gopherjs.org", "Access-Control-Allow-Origin header value.")
 
@@ -97,15 +98,21 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 func main() {
 	flag.Parse()
 
-	err := os.MkdirAll(*storageDirFlag, 0755)
-	if err != nil {
-		log.Fatalf("Error creating directory %q: %v.\n", *storageDirFlag, err)
+	switch *storageDirFlag {
+	default:
+		err := os.MkdirAll(*storageDirFlag, 0755)
+		if err != nil {
+			log.Fatalf("Error creating directory %q: %v.\n", *storageDirFlag, err)
+		}
+		localStore = webdav.Dir(*storageDirFlag)
+	case "":
+		localStore = webdav.NewMemFS()
 	}
 
 	http.HandleFunc("/p/", pHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
 	http.HandleFunc("/share", shareHandler) // "/share", save snippet and return its id.
 
-	err = http.ListenAndServe(*httpFlag, nil)
+	err := http.ListenAndServe(*httpFlag, nil)
 	if err != nil {
 		log.Fatalln("ListenAndServe:", err)
 	}

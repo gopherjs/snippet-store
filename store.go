@@ -3,16 +3,19 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
+
+	"github.com/shurcooL/webdavfs/vfsutil"
+	"golang.org/x/net/webdav"
 )
+
+// localStore is the local store for snippets. Snippets are kept as files in root directory.
+var localStore webdav.FileSystem
 
 // getSnippetFromLocalStore tries to get the snippet with given id from local store.
 // If it returns nil error, the ReadCloser must be closed by caller.
 func getSnippetFromLocalStore(id string) (io.ReadCloser, error) {
-	return os.Open(filepath.Join(*storageDirFlag, id))
+	return vfsutil.Open(localStore, id)
 }
 
 const userAgent = "gopherjs.org/play/ playground snippet fetcher"
@@ -43,6 +46,6 @@ func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
 // It returns the id assigned to the snippet.
 func storeSnippet(body []byte) (id string, err error) {
 	id = snippetBodyToID(body)
-	err = ioutil.WriteFile(filepath.Join(*storageDirFlag, id), body, 0644)
+	err = vfsutil.WriteFile(localStore, id, body, 0644)
 	return id, err
 }
