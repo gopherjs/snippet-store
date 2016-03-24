@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-func ExampleValidateID() {
+func Example_validateID() {
 	fmt.Println(validateID("D9L6MbPfE4"))
 	fmt.Println(validateID("ABZdez09-_"))
 	fmt.Println(validateID("Abc"))
