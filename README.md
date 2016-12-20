@@ -1,4 +1,7 @@
-# snippet-store [![Build Status](https://travis-ci.org/gopherjs/snippet-store.svg?branch=master)](https://travis-ci.org/gopherjs/snippet-store) [![GoDoc](https://godoc.org/github.com/gopherjs/snippet-store?status.svg)](https://godoc.org/github.com/gopherjs/snippet-store)
+snippet-store
+=============
+
+[![Build Status](https://travis-ci.org/gopherjs/snippet-store.svg?branch=master)](https://travis-ci.org/gopherjs/snippet-store) [![GoDoc](https://godoc.org/github.com/gopherjs/snippet-store?status.svg)](https://godoc.org/github.com/gopherjs/snippet-store)
 
 snippet-store is a server for storing GopherJS Playground snippets.
 
