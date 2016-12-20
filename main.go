@@ -112,6 +112,8 @@ func main() {
 	http.HandleFunc("/p/", pHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
 	http.HandleFunc("/share", shareHandler) // "/share", save snippet and return its id.
 
+	log.Println("Started.")
+
 	err := http.ListenAndServe(*httpFlag, nil)
 	if err != nil {
 		log.Fatalln("ListenAndServe:", err)
