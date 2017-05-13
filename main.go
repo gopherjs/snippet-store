@@ -41,10 +41,10 @@ func pHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var snippet io.Reader
-	if rc, err := getSnippetFromLocalStore(id); err == nil { // Check if we have the snippet locally first.
+	if rc, err := getSnippetFromLocalStore(req.Context(), id); err == nil { // Check if we have the snippet locally first.
 		defer rc.Close()
 		snippet = rc
-	} else if rc, err = getSnippetFromGoPlayground(id); err == nil { // If not found locally, try the Go Playground.
+	} else if rc, err = getSnippetFromGoPlayground(req.Context(), id); err == nil { // If not found locally, try the Go Playground.
 		defer rc.Close()
 		snippet = rc
 	}
@@ -80,7 +80,7 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id, err := storeSnippet(body)
+	id, err := storeSnippet(req.Context(), body)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)

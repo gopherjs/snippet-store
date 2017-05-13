@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,22 +15,22 @@ var localStore webdav.FileSystem
 
 // getSnippetFromLocalStore tries to get the snippet with given id from local store.
 // If it returns nil error, the ReadCloser must be closed by caller.
-func getSnippetFromLocalStore(id string) (io.ReadCloser, error) {
-	return vfsutil.Open(localStore, id)
+func getSnippetFromLocalStore(ctx context.Context, id string) (io.ReadCloser, error) {
+	return vfsutil.Open(ctx, localStore, id)
 }
 
 const userAgent = "gopherjs.org/play/ playground snippet fetcher"
 
 // getSnippetFromGoPlayground tries to get the snippet with given id from the Go Playground.
 // If it returns nil error, the ReadCloser must be closed by caller.
-func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
+func getSnippetFromGoPlayground(ctx context.Context, id string) (io.ReadCloser, error) {
 	req, err := http.NewRequest("GET", "https://play.golang.org/p/"+id+".go", nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", userAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +45,8 @@ func getSnippetFromGoPlayground(id string) (io.ReadCloser, error) {
 
 // storeSnippet stores snippet in local storage.
 // It returns the id assigned to the snippet.
-func storeSnippet(body []byte) (id string, err error) {
+func storeSnippet(ctx context.Context, body []byte) (id string, err error) {
 	id = snippetBodyToID(body)
-	err = vfsutil.WriteFile(localStore, id, body, 0644)
+	err = vfsutil.WriteFile(ctx, localStore, id, body, 0644)
 	return id, err
 }
