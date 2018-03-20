@@ -5,6 +5,7 @@ import "fmt"
 func Example_validateID() {
 	fmt.Println(validateID("D9L6MbPfE4"))
 	fmt.Println(validateID("ABZdez09-_"))
+	fmt.Println(validateID("N_M_YelfGeR"))
 	fmt.Println(validateID("Abc"))
 	fmt.Println(validateID("Abc?q=1235"))
 	fmt.Println(validateID("../../file"))
@@ -13,7 +14,8 @@ func Example_validateID() {
 	// Output:
 	// <nil>
 	// <nil>
-	// id length is 3 instead of 10
+	// <nil>
+	// id length is 3 instead of 10 or 11
 	// id contains unexpected character '?'
 	// id contains unexpected character '.'
 	// id contains unexpected character '\u00e4'
