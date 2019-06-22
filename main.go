@@ -32,9 +32,12 @@ func main() {
 	var localStore webdav.FileSystem
 	switch *storageDirFlag {
 	default:
-		err := os.MkdirAll(*storageDirFlag, 0755)
-		if err != nil {
-			log.Fatalf("error creating directory %q: %v", *storageDirFlag, err)
+		if fi, err := os.Stat(*storageDirFlag); os.IsNotExist(err) {
+			log.Fatalf("storage directory %q doesn't exist: %v", *storageDirFlag, err)
+		} else if err != nil {
+			log.Fatalf("error doing stat of directory %q: %v", *storageDirFlag, err)
+		} else if !fi.IsDir() {
+			log.Fatalf("file %q is not a directory", *storageDirFlag)
 		}
 		localStore = webdav.Dir(*storageDirFlag)
 	case "":
