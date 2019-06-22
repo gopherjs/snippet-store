@@ -18,52 +18,52 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-var storageDirFlag = flag.String("storage-dir", "", "Storage dir for snippets; if empty, a volatile in-memory store is used.")
-var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
-var allowOriginFlag = flag.String("allow-origin", "http://www.gopherjs.org", "Access-Control-Allow-Origin header value.")
+var (
+	storageDirFlag  = flag.String("storage-dir", "", "Storage dir for snippets; if empty, a volatile in-memory store is used.")
+	httpFlag        = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
+	allowOriginFlag = flag.String("allow-origin", "http://www.gopherjs.org", "Access-Control-Allow-Origin header value.")
+)
 
 const maxSnippetSizeBytes = 1024 * 1024
 
-func pHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
+func main() {
+	flag.Parse()
 
-	if req.Method != "GET" {
-		w.Header().Set("Allow", "GET")
-		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
-		return
+	var localStore webdav.FileSystem
+	switch *storageDirFlag {
+	default:
+		err := os.MkdirAll(*storageDirFlag, 0755)
+		if err != nil {
+			log.Fatalf("error creating directory %q: %v", *storageDirFlag, err)
+		}
+		localStore = webdav.Dir(*storageDirFlag)
+	case "":
+		localStore = webdav.NewMemFS()
 	}
 
-	id := req.URL.Path[len("/p/"):]
-	err := validateID(id)
+	s := &Server{
+		Store: &Store{
+			LocalFS: localStore,
+		},
+	}
+	http.HandleFunc("/share", s.ShareHandler) // "/share", save snippet and return its id.
+	http.HandleFunc("/p/", s.PHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
+
+	log.Println("Started.")
+
+	err := http.ListenAndServe(*httpFlag, nil)
 	if err != nil {
-		http.Error(w, "Unexpected id format.", http.StatusBadRequest)
-		return
-	}
-
-	var snippet io.Reader
-	if rc, err := getSnippetFromLocalStore(req.Context(), id); err == nil { // Check if we have the snippet locally first.
-		defer rc.Close()
-		snippet = rc
-	} else if rc, err = getSnippetFromGoPlayground(req.Context(), id); err == nil { // If not found locally, try the Go Playground.
-		defer rc.Close()
-		snippet = rc
-	}
-
-	if snippet == nil {
-		// Snippet not found.
-		http.Error(w, "Snippet not found.", http.StatusNotFound)
-		return
-	}
-
-	_, err = io.Copy(w, snippet)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Server error.", http.StatusInternalServerError)
-		return
+		log.Fatalln("ListenAndServe:", err)
 	}
 }
 
-func shareHandler(w http.ResponseWriter, req *http.Request) {
+// Server is the snippet store HTTP server.
+type Server struct {
+	Store *Store
+}
+
+// ShareHandler is the handler for "/share" requests.
+func (s *Server) ShareHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Needed for Safari.
 
@@ -80,7 +80,7 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id, err := storeSnippet(req.Context(), body)
+	id, err := s.Store.StoreSnippet(req.Context(), body)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)
@@ -90,32 +90,42 @@ func shareHandler(w http.ResponseWriter, req *http.Request) {
 	_, err = io.WriteString(w, id)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Server error.", http.StatusInternalServerError)
 		return
 	}
 }
 
-func main() {
-	flag.Parse()
+// PHandler is the handler for "/p/{{.SnippetId}}" requests.
+func (s *Server) PHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", *allowOriginFlag)
 
-	switch *storageDirFlag {
-	default:
-		err := os.MkdirAll(*storageDirFlag, 0755)
-		if err != nil {
-			log.Fatalf("Error creating directory %q: %v.\n", *storageDirFlag, err)
-		}
-		localStore = webdav.Dir(*storageDirFlag)
-	case "":
-		localStore = webdav.NewMemFS()
+	if req.Method != "GET" {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, "Method should be GET.", http.StatusMethodNotAllowed)
+		return
 	}
 
-	http.HandleFunc("/p/", pHandler)        // "/p/{{.SnippetId}}", serve snippet by id.
-	http.HandleFunc("/share", shareHandler) // "/share", save snippet and return its id.
-
-	log.Println("Started.")
-
-	err := http.ListenAndServe(*httpFlag, nil)
+	id := req.URL.Path[len("/p/"):]
+	err := validateID(id)
 	if err != nil {
-		log.Fatalln("ListenAndServe:", err)
+		http.Error(w, "Unexpected id format.", http.StatusBadRequest)
+		return
+	}
+
+	snippet, err := s.Store.LoadSnippet(req.Context(), id)
+	if os.IsNotExist(err) {
+		// Snippet not found.
+		http.Error(w, "Snippet not found.", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Println(err)
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+	defer snippet.Close()
+
+	_, err = io.Copy(w, snippet)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
