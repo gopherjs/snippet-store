@@ -1,22 +1,53 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"testing"
+)
 
-func Example_validateID() {
-	fmt.Println(validateID("D9L6MbPfE4"))
-	fmt.Println(validateID("ABZdez09-_"))
-	fmt.Println(validateID("N_M_YelfGeR"))
-	fmt.Println(validateID("Abc"))
-	fmt.Println(validateID("Abc?q=1235"))
-	fmt.Println(validateID("../../file"))
-	fmt.Println(validateID("Heya世界"))
+func TestValidateID(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want error
+	}{
+		{
+			in:   "D9L6MbPfE4",
+			want: nil,
+		},
+		{
+			in:   "ABZdez09-_",
+			want: nil,
+		},
+		{
+			in:   "N_M_YelfGeR",
+			want: nil,
+		},
+		{
+			in:   "Abc",
+			want: fmt.Errorf("id length is 3 instead of 10 or 11"),
+		},
+		{
+			in:   "Abc?q=1235",
+			want: fmt.Errorf("id contains unexpected character '?'"),
+		},
+		{
+			in:   "../../file",
+			want: fmt.Errorf("id contains unexpected character '.'"),
+		},
+		{
+			in:   "Heya世界",
+			want: fmt.Errorf(`id contains unexpected character '\u00e4'`),
+		},
+	} {
+		got := validateID(tc.in)
+		if !equalError(got, tc.want) {
+			t.Errorf("validateID(%q) error doesn't match:\n got: %v\nwant: %v", tc.in, got, tc.want)
+		}
+	}
+}
 
-	// Output:
-	// <nil>
-	// <nil>
-	// <nil>
-	// id length is 3 instead of 10 or 11
-	// id contains unexpected character '?'
-	// id contains unexpected character '.'
-	// id contains unexpected character '\u00e4'
+// equalError reports whether errors a and b are considered equal.
+// They're equal if both are nil, or both are not nil and a.Error() == b.Error().
+func equalError(a, b error) bool {
+	return a == nil && b == nil || a != nil && b != nil && a.Error() == b.Error()
 }
