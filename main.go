@@ -8,12 +8,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"golang.org/x/net/webdav"
 )
@@ -114,7 +116,11 @@ func (s *Server) PHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	snippet, err := s.Store.LoadSnippet(req.Context(), id)
+	// Set a 3 minute timeout to load and serve the snippet.
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Minute)
+	defer cancel()
+
+	snippet, err := s.Store.LoadSnippet(ctx, id)
 	if os.IsNotExist(err) {
 		// Snippet not found.
 		http.Error(w, "Snippet not found.", http.StatusNotFound)

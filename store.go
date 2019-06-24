@@ -59,12 +59,13 @@ func (s *Store) LoadSnippet(ctx context.Context, id string) (io.ReadCloser, erro
 // It returns an error that satisfies os.IsNotExist if snippet is not found.
 // If it returns nil error, the ReadCloser must be closed by caller.
 func fetchSnippetFromGoPlayground(ctx context.Context, id string) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", "https://play.golang.org/p/"+id+".go", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://play.golang.org/p/"+id+".go", nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	req.Header.Set("User-Agent", userAgent)
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
