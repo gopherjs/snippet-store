@@ -74,7 +74,7 @@ func fetchSnippetFromGoPlayground(ctx context.Context, id string) (io.ReadCloser
 		return nil, os.ErrNotExist
 	} else if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("Go Playground returned unexpected status code %v", resp.StatusCode)
+		return nil, fmt.Errorf("the Go Playground returned unexpected status code %v", resp.Status)
 	}
 	return resp.Body, nil
 }

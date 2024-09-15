@@ -11,7 +11,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -78,7 +77,7 @@ func (s *Server) ShareHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(http.MaxBytesReader(w, req.Body, maxSnippetSizeBytes))
+	body, err := io.ReadAll(http.MaxBytesReader(w, req.Body, maxSnippetSizeBytes))
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Server error.", http.StatusInternalServerError)

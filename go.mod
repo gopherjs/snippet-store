@@ -1,8 +1,8 @@
 module github.com/gopherjs/snippet-store
 
-go 1.20
+go 1.23
 
 require (
-	github.com/shurcooL/webdavfs v0.0.0-20190527155401-0680c3c63e3c
-	golang.org/x/net v0.7.0
+	github.com/shurcooL/webdavfs v0.0.0-20230705023409-38343235ac43
+	golang.org/x/net v0.33.0
 )
